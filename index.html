@@ -1,85 +1,9 @@
-<?php
-// URL del archivo JSONL con el catálogo masivo
-$jsonlUrl = 'https://huarang.github.io/vjav-data/vjav_videos.jsonl';
-
-// Función para descargar y decodificar el JSONL de forma segura (con caché simple opcional)
-function getVideosCatalog($url) {
-    $videos = [];
-    $context = stream_context_create([
-        "http" => [
-            "method" => "GET",
-            "header" => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        ]
-    ]);
-    
-    $content = @file_get_contents($url, false, $context);
-    if ($content !== false) {
-        $lines = explode("\n", $content);
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (!empty($line)) {
-                $decoded = json_decode($line, true);
-                if ($decoded) {
-                    $videos[] = $decoded;
-                }
-            }
-        }
-    }
-    return $videos;
-}
-
-$allVideos = getVideosCatalog($jsonlUrl);
-$totalVideos = count($allVideos);
-
-// Funciones auxiliares
-function slugify($text) {
-    $text = preg_replace('~[^\pL\d]+~u', '-', $text);
-    $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
-    $text = preg_replace('~[^-\w]+~', '', $text);
-    $text = trim($text, '-');
-    $text = preg_replace('~-+~', '-', $text);
-    $text = strtolower($text);
-    return empty($text) ? 'n-a' : $text;
-}
-
-function formatDuration($seconds) {
-    $sec = intval($seconds);
-    $mins = floor($sec / 60);
-    $remainingSecs = $sec % 60;
-    return sprintf('%d:%02d', $mins, $remainingSecs);
-}
-
-// Extraer categorías populares y sus conteos
-$categoryCounts = [];
-foreach ($allVideos as $video) {
-    if (isset($video['categories']) && is_array($video['categories'])) {
-        foreach ($video['categories'] as $cat) {
-            $categoryCounts[$cat] = isset($categoryCounts[$cat]) ? $categoryCounts[$cat] + 1 : 1;
-        }
-    }
-}
-arsort($categoryCounts);
-$topCategories = array_slice($categoryCounts, 0, 15, true);
-
-// Verificar si se abrió un video específico por la URL (?v=slug-id o id)
-$activeVideoId = isset($_GET['v']) ? $_GET['v'] : '';
-$selectedVideo = null;
-if (!empty($activeVideoId)) {
-    // Extraer el ID real si viene en formato slug-id
-    foreach ($allVideos as $video) {
-        if ($video['id'] === $activeVideoId || $activeVideoId === slugify($video['title']) . '-' . $video['id']) {
-            $selectedVideo = $video;
-            break;
-        }
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title><?php echo $selectedVideo ? htmlspecialchars($selectedVideo['title']) . ' - JavHub' : 'JavHub - Películas JAV Hot, Censored y Uncensored en HD'; ?></title>
+    <title>JavHub - Películas JAV Hot, Censored y Uncensored en HD</title>
     <meta name="description" content="Disfruta del contenido más caliente y exclusivo de JAV en tu celular. Actrices hermosas, masajes sensuales y videos en máxima calidad HD totalmente gratis en JavHub.">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -98,30 +22,19 @@ if (!empty($activeVideoId)) {
         .hot-glow {
             box-shadow: 0 0 25px rgba(244, 63, 94, 0.4);
         }
+        /* Scrollbar personalizado moderno */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #f43f5e; }
     </style>
-    
-    
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FPQ22WVBJN"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-FPQ22WVBJN');
-</script>    
-    
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- JuicyAds PopUnders v3 Start -->
 <script type="text/javascript" src="https://js.juicyads.com/jp.php?c=4474x2v2q224u4r2p2c443a4a4&u=https%3A%2F%2Fwww.juicyads.rocks"></script>
-<!-- JuicyAds PopUnders v3 End -->    
-
+<!-- JuicyAds PopUnders v3 End -->  
+    
     <!-- HEADER / NAVEGACIÓN -->
     <header class="bg-slate-950 border-b border-rose-900/40 sticky top-0 z-50 shadow-xl">
         <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
@@ -134,9 +47,7 @@ if (!empty($activeVideoId)) {
                     class="w-full bg-slate-900 border border-slate-800 rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-rose-600 transition shadow-inner">
             </div>
             
-            <div id="counter" class="text-xs text-rose-400 font-bold bg-rose-950/50 px-3 py-1.5 rounded-full border border-rose-900/50">
-                🔥 <?php echo number_format($totalVideos); ?> Videos Totales
-            </div>
+            <div id="counter" class="text-xs text-rose-400 font-bold bg-rose-950/50 px-3 py-1.5 rounded-full border border-rose-900/50">Cargando catálogo masivo...</div>
         </div>
     </header>
 
@@ -146,9 +57,7 @@ if (!empty($activeVideoId)) {
         <!-- SIDEBAR IZQUIERDA -->
         <aside class="hidden lg:block lg:col-span-2 space-y-4 sticky top-20">
             <div id="leftSidebarAd" class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-center min-h-[400px] flex flex-col justify-center items-center text-slate-500 text-xs border-dashed">
-                <!-- Zona de anuncio Izquierda -->
-                <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
-                <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
+                <!-- Se inyecta automáticamente desde la variable AD_LEFT_BANNER -->
             </div>
         </aside>
 
@@ -159,11 +68,7 @@ if (!empty($activeVideoId)) {
             <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl">
                 <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">Categorías Populares</h3>
                 <div id="categoriesContainer" class="flex flex-wrap gap-2">
-                    <?php foreach ($topCategories as $catName => $catCount): ?>
-                        <button onclick="filterByCategory('<?php echo htmlspecialchars($catName, ENT_QUOTES); ?>')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-300 text-xs px-3 py-1.5 rounded-full transition border border-slate-700 font-medium">
-                            <?php echo htmlspecialchars($catName); ?> (<?php echo $catCount; ?>)
-                        </button>
-                    <?php endforeach; ?>
+                    <!-- Se inyectan dinámicamente -->
                 </div>
             </div>
 
@@ -179,50 +84,19 @@ if (!empty($activeVideoId)) {
                     </div>
                 </div>
 
-                <!-- Grid renderizado desde PHP inicialmente para SEO, luego controlado por JS -->
                 <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    <?php 
-                    // Mostramos los primeros 48 videos directo desde PHP para renderizado ultrarrápido y SEO
-                    $initialBatch = array_slice($allVideos, 0, 48);
-                    foreach ($initialBatch as $video): 
-                        $primaryCat = isset($video['categories'][0]) ? $video['categories'][0] : 'JAV';
-                        $hasHd = '';
-                        if (isset($video['tags'])) {
-                            foreach ($video['tags'] as $tag) {
-                                if (stripos($tag, 'hd') !== false) { $hasHd = '• HD'; break; }
-                            }
-                        }
-                        $vSlug = slugify($video['title']);
-                    ?>
-                    <div class="video-card bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg transition duration-300 flex flex-col justify-between group hover:border-rose-500/50" data-title="<?php echo htmlspecialchars(strtolower($video['title'])); ?>" data-categories="<?php echo htmlspecialchars(strtolower(implode(',', $video['categories'] ?? []))); ?>">
-                        <div>
-                            <div class="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer" onclick="selectVideo('<?php echo $video['id']; ?>', '<?php echo $vSlug; ?>', '<?php echo htmlspecialchars(addslashes($video['title'])); ?>', '<?php echo htmlspecialchars($video['iframe']); ?>', '<?php echo htmlspecialchars($video['poster']); ?>', '<?php echo formatDuration($video['duration']); ?>')">
-                                <img src="<?php echo htmlspecialchars($video['poster']); ?>" alt="<?php echo htmlspecialchars($video['title']); ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
-                                <span class="absolute bottom-2 right-2 bg-black/80 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"><?php echo formatDuration($video['duration']); ?></span>
-                                <div class="absolute inset-0 bg-rose-600/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                    <div class="bg-rose-600 text-white p-2.5 rounded-full shadow-lg">
-                                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-3">
-                                <h2 class="font-semibold text-xs text-slate-100 line-clamp-2 hover:text-rose-400 transition cursor-pointer mb-1" onclick="selectVideo('<?php echo $video['id']; ?>', '<?php echo $vSlug; ?>', '<?php echo htmlspecialchars(addslashes($video['title'])); ?>', '<?php echo htmlspecialchars($video['iframe']); ?>', '<?php echo htmlspecialchars($video['poster']); ?>', '<?php echo formatDuration($video['duration']); ?>')"><?php echo htmlspecialchars($video['title']); ?></h2>
-                                <p class="text-[10px] text-slate-400 font-medium"><?php echo htmlspecialchars($primaryCat); ?> <?php echo $hasHd; ?></p>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
+                    <!-- Tarjetas de video -->
                 </div>
 
-                <div id="statusMessage" class="text-center py-10 text-slate-500 text-sm hidden">
-                    No se encontraron resultados con ese criterio.
+                <div id="statusMessage" class="text-center py-20 text-slate-500 text-sm">
+                    Sincronizando base de datos de 60k+ videos... Esto puede tomar unos segundos.
                 </div>
 
-                <!-- PAGINACIÓN / CARGAR MÁS -->
-                <div id="paginationContainer" class="flex justify-center items-center gap-2 mt-8">
-                    <button onclick="changePage(-1)" id="prevBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition disabled:opacity-30" disabled>Anterior</button>
-                    <span id="pageInfo" class="text-xs text-slate-400 font-mono px-3">Página 1</span>
-                    <button onclick="changePage(1)" id="nextBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition">Siguiente</button>
+                <!-- PAGINACIÓN -->
+                <div id="paginationContainer" class="flex justify-center items-center gap-2 mt-8 hidden">
+                    <button onclick="changePage(currentPage - 1)" id="prevBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition disabled:opacity-30">Anterior</button>
+                    <span id="pageInfo" class="text-xs text-slate-400 font-mono px-3">Página 1 de 1</span>
+                    <button onclick="changePage(currentPage + 1)" id="nextBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition disabled:opacity-30">Siguiente</button>
                 </div>
             </section>
         </main>
@@ -230,79 +104,47 @@ if (!empty($activeVideoId)) {
         <!-- SIDEBAR DERECHA -->
         <aside class="hidden lg:block lg:col-span-2 space-y-4 sticky top-20">
             <div id="rightSidebarAd" class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-center min-h-[400px] flex flex-col justify-center items-center text-slate-500 text-xs border-dashed">
-                <!-- Zona de anuncio Derecha -->
-                <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
-                <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
+                <!-- Se inyecta automáticamente desde la variable AD_RIGHT_BANNER -->
             </div>
         </aside>
 
     </div>
 
-    <!-- MODAL REPRODUCTOR AMPLIADO CON VIDEOS SIMILARES -->
-    <div id="videoModal" class="fixed inset-0 bg-black/95 z-50 <?php echo $selectedVideo ? '' : 'hidden'; ?> flex items-center justify-center p-0 sm:p-6 backdrop-blur-md overflow-y-auto">
+    <!-- MODAL REPRODUCTOR AMPLIADO (OCUPA MÁS ESPACIO PARA EVITAR VACÍOS) -->
+    <div id="videoModal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-0 sm:p-6 backdrop-blur-md overflow-y-auto">
         <div class="bg-slate-900 border-0 sm:border border-rose-600/50 w-full max-w-6xl sm:rounded-2xl overflow-hidden shadow-2xl relative flex flex-col hot-glow my-auto">
             
             <div class="flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 bg-slate-950 border-b border-rose-900/40">
-                <h3 id="modalTitle" class="font-bold text-xs sm:text-base text-white truncate pr-4">
-                    <?php echo $selectedVideo ? htmlspecialchars($selectedVideo['title']) : 'Reproduciendo'; ?>
-                </h3>
+                <h3 id="modalTitle" class="font-bold text-xs sm:text-base text-white truncate pr-4">Reproduciendo</h3>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 text-3xl font-bold px-2 transition">&times;</button>
             </div>
 
             <!-- BANNER SUPERIOR DEL MODAL -->
-            <div class="bg-slate-950/80 px-4 py-1.5 border-b border-slate-800/60 flex justify-between items-center text-[11px] text-slate-400">
-                <span>⚡ Reproducción HD Prioritaria</span>
-                <span class="text-rose-500 font-semibold cursor-pointer hover:underline">Patrocinado ⭐</span>
+            <div id="modalTopAd">
+                <!-- Se inyecta automáticamente desde la variable AD_MODAL_TOP -->
             </div>
 
             <!-- Contenedor Principal del Reproductor + Similares a los Costados -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-black">
-                <!-- Video principal -->
+                <!-- Video principal (ocupa más espacio) -->
                 <div class="lg:col-span-8 flex flex-col justify-center">
                     <div class="relative w-full aspect-video bg-black flex items-center justify-center rounded-xl overflow-hidden shadow-lg">
-                        <iframe id="modalIframe" src="<?php echo $selectedVideo ? htmlspecialchars($selectedVideo['iframe']) : ''; ?>" class="w-full h-full border-0" allowfullscreen></iframe>
+                        <iframe id="modalIframe" src="" class="w-full h-full border-0" allowfullscreen></iframe>
                     </div>
                 </div>
 
-                <!-- Columna de Videos Similares (Llena el espacio vacío en PC) -->
+                <!-- Columna de Videos Similares (Llena el espacio vacío a la derecha en PC) -->
                 <div class="lg:col-span-4 flex flex-col space-y-3 max-h-[450px] overflow-y-auto pr-1">
                     <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider sticky top-0 bg-black py-1">🔥 Videos Similares / Recomendados</h4>
                     <div id="similarVideosContainer" class="space-y-2.5">
-                        <?php if ($selectedVideo && isset($selectedVideo['categories'])): ?>
-                            <?php 
-                            $countSim = 0;
-                            foreach ($allVideos as $sim) {
-                                if ($sim['id'] === $selectedVideo['id']) continue;
-                                $hasCommonCat = !empty(array_intersect($sim['categories'] ?? [], $selectedVideo['categories']));
-                                if ($hasCommonCat && $countSim < 12):
-                                    $countSim++;
-                                    $simSlug = slugify($sim['title']);
-                            ?>
-                            <div onclick="selectVideo('<?php echo $sim['id']; ?>', '<?php echo $simSlug; ?>', '<?php echo htmlspecialchars(addslashes($sim['title'])); ?>', '<?php echo htmlspecialchars($sim['iframe']); ?>', '<?php echo htmlspecialchars($sim['poster']); ?>', '<?php echo formatDuration($sim['duration']); ?>')" class="flex gap-2 bg-slate-950/60 hover:bg-slate-800/80 p-1.5 rounded-xl cursor-pointer transition border border-slate-800/60">
-                                <div class="relative w-28 aspect-video bg-black rounded-lg overflow-hidden flex-shrink-0">
-                                    <img src="<?php echo htmlspecialchars($sim['poster']); ?>" alt="<?php echo htmlspecialchars($sim['title']); ?>" class="w-full h-full object-cover" loading="lazy">
-                                    <span class="absolute bottom-1 right-1 bg-black/80 text-rose-400 text-[9px] px-1 rounded font-mono"><?php echo formatDuration($sim['duration']); ?></span>
-                                </div>
-                                <div class="flex flex-col justify-center overflow-hidden pr-1">
-                                    <h5 class="text-[11px] font-semibold text-slate-200 line-clamp-2 leading-tight hover:text-rose-400"><?php echo htmlspecialchars($sim['title']); ?></h5>
-                                    <span class="text-[9px] text-slate-400 mt-1"><?php echo htmlspecialchars($sim['categories'][0] ?? 'JAV'); ?></span>
-                                </div>
-                            </div>
-                            <?php 
-                                endif;
-                            } 
-                            endif;
-                            ?>
+                        <!-- Se cargan dinámicamente -->
                     </div>
                 </div>
             </div>
 
             <!-- BANNER INFERIOR DEL MODAL -->
-            <div class="bg-slate-950 p-3 sm:p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-2">
-                <div class="w-full sm:w-auto text-center sm:text-left text-[11px] text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg">
-                    🔥 ¿Quieres ver más contenido exclusivo sin anuncios molestos? <span class="text-rose-400 font-bold underline cursor-pointer">Clic aquí</span>
-                </div>
-                <button onclick="shareVideo()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition whitespace-nowrap">Copiar Enlace</button>
+            <div id="modalBottomAd" class="bg-slate-950 p-3 sm:p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-2">
+                <!-- Se inyecta automáticamente desde la variable AD_MODAL_BOTTOM -->
             </div>
 
         </div>
@@ -313,38 +155,70 @@ if (!empty($activeVideoId)) {
         JavHub Mobile &bull; Contenido exclusivo para mayores de edad (+18)
     </footer>
 
-    <!-- SCRIPT CLIENTE PARA BÚSQUEDA Y FILTRADO EN TIEMPO REAL -->
+    <!-- SCRIPT DE CONFIGURACIÓN DE ANUNCIOS Y CATALOGO -->
     <script>
-        // Catálogo completo incrustado en JSON para búsqueda instantánea en cliente sin recargar la página
-        const allVideosData = <?php echo json_encode($allVideos); ?>;
+        /* ==========================================================
+           🌟 ZONA DE VARIABLES DE ANUNCIOS (MODIFICA AQUÍ TUS SCRIPTS)
+           ========================================================== */
         
+        const AD_LEFT_BANNER = `
+            <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
+            <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
+        `;
+
+        const AD_RIGHT_BANNER = `
+            <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
+            <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
+        `;
+
+        const AD_MODAL_TOP = `
+            <div class="bg-slate-950/80 px-4 py-1.5 border-b border-slate-800/60 flex justify-between items-center text-[11px] text-slate-400">
+                <span>⚡ Reproducción HD Prioritaria</span>
+                <span class="text-rose-500 font-semibold cursor-pointer hover:underline" onclick="alert('Acción de anuncio superior')">Patrocinado ⭐</span>
+            </div>
+        `;
+
+        const AD_MODAL_BOTTOM = `
+            <div class="w-full sm:w-auto text-center sm:text-left text-[11px] text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg">
+                🔥 ¿Quieres ver más contenido exclusivo sin anuncios molestos? <span class="text-rose-400 font-bold underline cursor-pointer">Clic aquí</span>
+            </div>
+            <button onclick="shareVideo()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition whitespace-nowrap">Copiar Enlace</button>
+        `;
+
+        /* ==========================================================
+           ⚙️ LÓGICA GENERAL DE LA WEB
+           ========================================================== */
+
+        document.getElementById('leftSidebarAd').innerHTML = AD_LEFT_BANNER;
+        document.getElementById('rightSidebarAd').innerHTML = AD_RIGHT_BANNER;
+        document.getElementById('modalTopAd').innerHTML = AD_MODAL_TOP;
+        document.getElementById('modalBottomAd').innerHTML = AD_MODAL_BOTTOM;
+
+        const jsonlUrl = 'https://huarang.github.io/vjav-data/vjav_videos.jsonl';
+        
+        let allVideos = [];
+        let filteredVideos = [];
         let currentPage = 1;
         const itemsPerPage = 48;
-        let currentFilteredVideos = allVideosData;
 
-        const searchInput = document.getElementById('searchInput');
         const videoGrid = document.getElementById('videoGrid');
+        const searchInput = document.getElementById('searchInput');
+        const counter = document.getElementById('counter');
         const statusMessage = document.getElementById('statusMessage');
+        const categoriesContainer = document.getElementById('categoriesContainer');
         const paginationContainer = document.getElementById('paginationContainer');
         const pageInfo = document.getElementById('pageInfo');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
-        const activeFilterBadge = document.getElementById('activeFilterBadge');
-        const filterName = document.getElementById('filterName');
+        
         const videoModal = document.getElementById('videoModal');
         const modalIframe = document.getElementById('modalIframe');
         const modalTitle = document.getElementById('modalTitle');
+        const activeFilterBadge = document.getElementById('activeFilterBadge');
+        const filterName = document.getElementById('filterName');
         const similarVideosContainer = document.getElementById('similarVideosContainer');
 
-        function formatDurationJS(seconds) {
-            const sec = parseInt(seconds, 10);
-            if (isNaN(sec)) return "00:00";
-            const mins = Math.floor(sec / 60);
-            const remainingSecs = sec % 60;
-            return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
-        }
-
-        function slugifyJS(text) {
+        function slugify(text) {
             return text.toString().toLowerCase()
                 .replace(/\s+/g, '-')
                 .replace(/[^\w\-]+/g, '')
@@ -352,10 +226,73 @@ if (!empty($activeVideoId)) {
                 .trim();
         }
 
-        function renderGridPage() {
+        function formatDuration(seconds) {
+            const sec = parseInt(seconds, 10);
+            if (isNaN(sec)) return "00:00";
+            const mins = Math.floor(sec / 60);
+            const remainingSecs = sec % 60;
+            return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+        }
+
+        async function fetchJSONL() {
+            try {
+                const response = await fetch(jsonlUrl);
+                if (!response.ok) throw new Error('Error al conectar con el servidor');
+                
+                const text = await response.text();
+                const lines = text.split('\n');
+                
+                allVideos = [];
+                for (let line of lines) {
+                    if (line.trim() !== '') {
+                        try {
+                            allVideos.push(JSON.parse(line));
+                        } catch (e) {}
+                    }
+                }
+
+                filteredVideos = allVideos;
+                statusMessage.style.display = 'none';
+                paginationContainer.classList.remove('hidden');
+                counter.textContent = `🔥 ${allVideos.length.toLocaleString()} Videos Totales`;
+
+                extractTopCategories();
+                renderCurrentPage();
+                checkUrlParameter();
+
+            } catch (error) {
+                statusMessage.textContent = 'Error al conectar con el servidor. Intenta recargar la página.';
+                console.error(error);
+            }
+        }
+
+        function extractTopCategories() {
+            const counts = {};
+            allVideos.forEach(v => {
+                if (v.categories) {
+                    v.categories.forEach(cat => {
+                        counts[cat] = (counts[cat] || 0) + 1;
+                    });
+                }
+            });
+
+            const topCats = Object.keys(counts).sort((a,b) => counts[b] - counts[a]).slice(0, 15);
+
+            categoriesContainer.innerHTML = '';
+            topCats.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-300 text-xs px-3 py-1.5 rounded-full transition border border-slate-700 font-medium';
+                btn.textContent = `${cat} (${counts[cat]})`;
+                btn.onclick = () => filterByCategory(cat);
+                categoriesContainer.appendChild(btn);
+            });
+        }
+
+        function renderCurrentPage() {
             videoGrid.innerHTML = '';
 
-            if (currentFilteredVideos.length === 0) {
+            if (filteredVideos.length === 0) {
+                statusMessage.textContent = 'No se encontraron resultados con ese criterio.';
                 statusMessage.style.display = 'block';
                 paginationContainer.classList.add('hidden');
                 return;
@@ -366,20 +303,21 @@ if (!empty($activeVideoId)) {
 
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
-            const pageItems = currentFilteredVideos.slice(startIndex, endIndex);
+            const pageItems = filteredVideos.slice(startIndex, endIndex);
 
             pageItems.forEach(video => {
-                const primaryCat = video.categories && video.categories.length > 0 ? video.categories[0] : 'JAV';
-                const hasHd = video.tags && video.tags.some(t => t.toLowerCase().includes('hd')) ? '• HD' : '';
-                const vSlug = slugifyJS(video.title);
-
                 const card = document.createElement('div');
                 card.className = 'bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg transition duration-300 flex flex-col justify-between group hover:border-rose-500/50';
+                
+                const primaryCat = video.categories && video.categories.length > 0 ? video.categories[0] : 'JAV';
+                const hasHd = video.tags && video.tags.some(t => t.toLowerCase().includes('hd')) ? '• HD' : '';
+                const videoSlug = slugify(video.title);
+
                 card.innerHTML = `
                     <div>
-                        <div class="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer" onclick="selectVideo('${video.id}', '${vSlug}', '${escapeHtml(video.title)}', '${video.iframe}', '${video.poster}', '${formatDurationJS(video.duration)}')">
-                            <img src="${video.poster}" alt="${escapeHtml(video.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
-                            <span class="absolute bottom-2 right-2 bg-black/80 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">${formatDurationJS(video.duration)}</span>
+                        <div class="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer" onclick="selectVideo('${video.id}', '${videoSlug}')">
+                            <img src="${video.poster}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                            <span class="absolute bottom-2 right-2 bg-black/80 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">${formatDuration(video.duration)}</span>
                             <div class="absolute inset-0 bg-rose-600/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                 <div class="bg-rose-600 text-white p-2.5 rounded-full shadow-lg">
                                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -387,7 +325,7 @@ if (!empty($activeVideoId)) {
                             </div>
                         </div>
                         <div class="p-3">
-                            <h2 class="font-semibold text-xs text-slate-100 line-clamp-2 hover:text-rose-400 transition cursor-pointer mb-1" onclick="selectVideo('${video.id}', '${vSlug}', '${escapeHtml(video.title)}', '${video.iframe}', '${video.poster}', '${formatDurationJS(video.duration)}')">${escapeHtml(video.title)}</h2>
+                            <h2 class="font-semibold text-xs text-slate-100 line-clamp-2 hover:text-rose-400 transition cursor-pointer mb-1" onclick="selectVideo('${video.id}', '${videoSlug}')">${video.title}</h2>
                             <p class="text-[10px] text-slate-400 font-medium">${primaryCat} ${hasHd}</p>
                         </div>
                     </div>
@@ -395,7 +333,7 @@ if (!empty($activeVideoId)) {
                 videoGrid.appendChild(card);
             });
 
-            const totalPages = Math.ceil(currentFilteredVideos.length / itemsPerPage);
+            const totalPages = Math.ceil(filteredVideos.length / itemsPerPage);
             pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
             prevBtn.disabled = currentPage === 1;
             nextBtn.disabled = currentPage >= totalPages;
@@ -403,77 +341,99 @@ if (!empty($activeVideoId)) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function changePage(direction) {
-            currentPage += direction;
-            renderGridPage();
+        function changePage(targetPage) {
+            currentPage = targetPage;
+            renderCurrentPage();
         }
 
         function filterByCategory(cat) {
             currentPage = 1;
-            currentFilteredVideos = allVideosData.filter(v => v.categories && v.categories.includes(cat));
+            filteredVideos = allVideos.filter(v => v.categories && v.categories.includes(cat));
             filterName.textContent = cat;
             activeFilterBadge.classList.remove('hidden');
-            renderGridPage();
+            renderCurrentPage();
         }
 
         function clearFilter() {
             currentPage = 1;
-            currentFilteredVideos = allVideosData;
+            filteredVideos = allVideos;
             activeFilterBadge.classList.add('hidden');
             searchInput.value = '';
-            renderGridPage();
+            renderCurrentPage();
         }
 
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             currentPage = 1;
-            currentFilteredVideos = allVideosData.filter(video => {
+            filteredVideos = allVideos.filter(video => {
                 const titleMatch = video.title.toLowerCase().includes(term);
                 const catMatch = video.categories && video.categories.some(c => c.toLowerCase().includes(term));
                 const tagMatch = video.tags && video.tags.some(t => t.toLowerCase().includes(term));
                 return titleMatch || catMatch || tagMatch;
             });
-            renderGridPage();
+            renderCurrentPage();
         });
 
-        function selectVideo(id, slug, title, iframe, poster, duration) {
-            modalTitle.textContent = title;
-            modalIframe.src = iframe;
-            videoModal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+        function selectVideo(id, slug) {
+            const video = allVideos.find(v => v.id === id);
+            if (!video) return;
 
             const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?v=${slug}-${id}`;
             window.history.pushState({path: newurl}, '', newurl);
 
-            // Cargar videos similares en la barra lateral del modal dinámicamente
-            renderSimilarVideosInModal(id);
+            openModal(video);
         }
 
-        function renderSimilarVideosInModal(currentId) {
-            const currentVideo = allVideosData.find(v => v.id === currentId);
-            if (!currentVideo) return;
+        function checkUrlParameter() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const vParam = urlParams.get('v');
+            if (vParam) {
+                const found = allVideos.find(v => v.id === vParam || vParam.endsWith('-' + v.id));
+                if (found) {
+                    openModal(found);
+                }
+            }
+        }
 
+        function openModal(video) {
+            modalTitle.textContent = video.title;
+            modalIframe.src = video.iframe;
+            videoModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            renderSimilarVideos(video);
+        }
+
+        function renderSimilarVideos(currentVideo) {
             similarVideosContainer.innerHTML = '';
-            let similars = allVideosData.filter(v => v.id !== currentId && v.categories && currentVideo.categories && v.categories.some(c => currentVideo.categories.includes(c)));
             
+            // Buscar videos que compartan alguna categoría o simplemente tomar aleatorios/del mismo tipo
+            let similars = allVideos.filter(v => v.id !== currentVideo.id && v.categories && currentVideo.categories && v.categories.some(c => currentVideo.categories.includes(c)));
+            
+            // Si hay muy pocos similares por categoría, rellenar con otros videos del catálogo
             if (similars.length < 8) {
-                const others = allVideosData.filter(v => v.id !== currentId && !similars.includes(v));
+                const others = allVideos.filter(v => v.id !== currentVideo.id && !similars.includes(v));
                 similars = similars.concat(others);
             }
 
+            // Tomar los primeros 12 para mostrar en la lista lateral
             similars.slice(0, 12).forEach(sim => {
-                const simSlug = slugifyJS(sim.title);
+                const itemSlug = slugify(sim.title);
                 const simCard = document.createElement('div');
                 simCard.className = 'flex gap-2 bg-slate-950/60 hover:bg-slate-800/80 p-1.5 rounded-xl cursor-pointer transition border border-slate-800/60';
-                simCard.onclick = () => selectVideo(sim.id, simSlug, escapeHtml(sim.title), sim.iframe, sim.poster, formatDurationJS(sim.duration));
+                simCard.onclick = () => {
+                    const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?v=${itemSlug}-${sim.id}`;
+                    window.history.pushState({path: newurl}, '', newurl);
+                    openModal(sim);
+                };
 
                 simCard.innerHTML = `
                     <div class="relative w-28 aspect-video bg-black rounded-lg overflow-hidden flex-shrink-0">
-                        <img src="${sim.poster}" alt="${escapeHtml(sim.title)}" class="w-full h-full object-cover" loading="lazy">
-                        <span class="absolute bottom-1 right-1 bg-black/80 text-rose-400 text-[9px] px-1 rounded font-mono">${formatDurationJS(sim.duration)}</span>
+                        <img src="${sim.poster}" alt="${sim.title}" class="w-full h-full object-cover" loading="lazy">
+                        <span class="absolute bottom-1 right-1 bg-black/80 text-rose-400 text-[9px] px-1 rounded font-mono">${formatDuration(sim.duration)}</span>
                     </div>
                     <div class="flex flex-col justify-center overflow-hidden pr-1">
-                        <h5 class="text-[11px] font-semibold text-slate-200 line-clamp-2 leading-tight hover:text-rose-400">${escapeHtml(sim.title)}</h5>
+                        <h5 class="text-[11px] font-semibold text-slate-200 line-clamp-2 leading-tight hover:text-rose-400">${sim.title}</h5>
                         <span class="text-[9px] text-slate-400 mt-1">${sim.categories ? sim.categories[0] : 'JAV'}</span>
                     </div>
                 `;
@@ -495,10 +455,6 @@ if (!empty($activeVideoId)) {
             alert('¡Enlace directo copiado al portapapeles!');
         }
 
-        function escapeHtml(text) {
-            return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        }
-
         window.addEventListener('popstate', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (!urlParams.has('v')) {
@@ -509,6 +465,8 @@ if (!empty($activeVideoId)) {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeModal();
         });
+
+        fetchJSONL();
     </script>
 </body>
 </html>
