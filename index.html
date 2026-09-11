@@ -1,176 +1,514 @@
+<?php
+// URL del archivo JSONL con el catálogo masivo
+$jsonlUrl = 'https://huarang.github.io/vjav-data/vjav_videos.jsonl';
+
+// Función para descargar y decodificar el JSONL de forma segura (con caché simple opcional)
+function getVideosCatalog($url) {
+    $videos = [];
+    $context = stream_context_create([
+        "http" => [
+            "method" => "GET",
+            "header" => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        ]
+    ]);
+    
+    $content = @file_get_contents($url, false, $context);
+    if ($content !== false) {
+        $lines = explode("\n", $content);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (!empty($line)) {
+                $decoded = json_decode($line, true);
+                if ($decoded) {
+                    $videos[] = $decoded;
+                }
+            }
+        }
+    }
+    return $videos;
+}
+
+$allVideos = getVideosCatalog($jsonlUrl);
+$totalVideos = count($allVideos);
+
+// Funciones auxiliares
+function slugify($text) {
+    $text = preg_replace('~[^\pL\d]+~u', '-', $text);
+    $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+    $text = preg_replace('~[^-\w]+~', '', $text);
+    $text = trim($text, '-');
+    $text = preg_replace('~-+~', '-', $text);
+    $text = strtolower($text);
+    return empty($text) ? 'n-a' : $text;
+}
+
+function formatDuration($seconds) {
+    $sec = intval($seconds);
+    $mins = floor($sec / 60);
+    $remainingSecs = $sec % 60;
+    return sprintf('%d:%02d', $mins, $remainingSecs);
+}
+
+// Extraer categorías populares y sus conteos
+$categoryCounts = [];
+foreach ($allVideos as $video) {
+    if (isset($video['categories']) && is_array($video['categories'])) {
+        foreach ($video['categories'] as $cat) {
+            $categoryCounts[$cat] = isset($categoryCounts[$cat]) ? $categoryCounts[$cat] + 1 : 1;
+        }
+    }
+}
+arsort($categoryCounts);
+$topCategories = array_slice($categoryCounts, 0, 15, true);
+
+// Verificar si se abrió un video específico por la URL (?v=slug-id o id)
+$activeVideoId = isset($_GET['v']) ? $_GET['v'] : '';
+$selectedVideo = null;
+if (!empty($activeVideoId)) {
+    // Extraer el ID real si viene en formato slug-id
+    foreach ($allVideos as $video) {
+        if ($video['id'] === $activeVideoId || $activeVideoId === slugify($video['title']) . '-' . $video['id']) {
+            $selectedVideo = $video;
+            break;
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso Exclusivo - Contenido VIP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-    <meta name="juicyads-site-verification" content="914eed5e966517be7ecd3f6432696492">
-       
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><?php echo $selectedVideo ? htmlspecialchars($selectedVideo['title']) . ' - JavHub' : 'JavHub - Películas JAV Hot, Censored y Uncensored en HD'; ?></title>
+    <meta name="description" content="Disfruta del contenido más caliente y exclusivo de JAV en tu celular. Actrices hermosas, masajes sensuales y videos en máxima calidad HD totalmente gratis en JavHub.">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Poppins', sans-serif;
-        }
-
         body {
-            background-color: #0b0b0e;
-            color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-x: hidden;
-            background-image: radial-gradient(circle at center, #1a1128 0%, #0b0b0e 80%);
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        .landing-container {
-            width: 100%;
-            max-width: 480px;
-            padding: 30px 20px;
-            text-align: center;
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
-
-        .card {
-            background: rgba(20, 20, 30, 0.75);
-            border: 1px solid rgba(255, 0, 128, 0.3);
-            border-radius: 20px;
-            padding: 30px 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 0, 128, 0.15);
-            backdrop-filter: blur(10px);
+        .hot-glow {
+            box-shadow: 0 0 25px rgba(244, 63, 94, 0.4);
         }
-
-        .badge {
-            background: linear-gradient(135deg, #ff007f, #ff7b00);
-            color: #fff;
-            font-size: 0.75rem;
-            font-weight: 800;
-            padding: 5px 12px;
-            border-radius: 50px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: inline-block;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        .avatar-container {
-            position: relative;
-            width: 110px;
-            height: 110px;
-            margin: 0 auto 20px auto;
-        }
-
-        .avatar {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #ff007f;
-            box-shadow: 0 0 15px rgba(255, 0, 128, 0.5);
-        }
-
-        .status-dot {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            width: 18px;
-            height: 18px;
-            background-color: #22c55e;
-            border: 3px solid #14141e;
-            border-radius: 50%;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 800;
-            margin-bottom: 10px;
-            color: #fff;
-        }
-
-        h1 span {
-            color: #ff007f;
-        }
-
-        p {
-            color: #a0a0b2;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 25px;
-        }
-
-        .btn-cta {
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, #ff007f 0%, #d9006c 100%);
-            color: #white;
-            color: #fff;
-            text-decoration: none;
-            padding: 15px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1.05rem;
-            box-shadow: 0 8px 25px rgba(255, 0, 128, 0.4);
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(255, 0, 128, 0.6);
-            background: linear-gradient(135deg, #ff1a8c, #ff007f);
-        }
-
-        .footer-text {
-            margin-top: 20px;
-            font-size: 0.75rem;
-            color: #6b6b80;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1.05); }
-        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f43f5e; }
     </style>
-                                        
-                                       
+    
+    
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-FPQ22WVBJN"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-FPQ22WVBJN');
+</script>    
+    
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
     <!-- JuicyAds PopUnders v3 Start -->
 <script type="text/javascript" src="https://js.juicyads.com/jp.php?c=4474x2v2q224u4r2p2c443a4a4&u=https%3A%2F%2Fwww.juicyads.rocks"></script>
-<!-- JuicyAds PopUnders v3 End -->
+<!-- JuicyAds PopUnders v3 End -->    
 
-    <div class="landing-container">
-        <div class="card">
-            <div class="badge">🔥 Acceso Restricción +18</div>
+    <!-- HEADER / NAVEGACIÓN -->
+    <header class="bg-slate-950 border-b border-rose-900/40 sticky top-0 z-50 shadow-xl">
+        <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            <a href="?" class="text-2xl font-black tracking-wider text-rose-600 flex items-center gap-1">
+                JAV<span class="text-white">HUB</span><span class="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full uppercase ml-1 animate-pulse">HOT 🔥</span>
+            </a>
             
-            <div class="avatar-container">
-                <!-- Puedes cambiar la URL de la imagen por la de tu preferencia -->
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Modelo" class="avatar">
-                <div class="status-dot"></div>
+            <div class="w-full md:w-1/3 relative">
+                <input type="text" id="searchInput" placeholder="🔥 Buscar actrices, tags, categorías..." 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-rose-600 transition shadow-inner">
+            </div>
+            
+            <div id="counter" class="text-xs text-rose-400 font-bold bg-rose-950/50 px-3 py-1.5 rounded-full border border-rose-900/50">
+                🔥 <?php echo number_format($totalVideos); ?> Videos Totales
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL DE 3 COLUMNAS -->
+    <div class="max-w-[1600px] mx-auto px-4 py-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- SIDEBAR IZQUIERDA -->
+        <aside class="hidden lg:block lg:col-span-2 space-y-4 sticky top-20">
+            <div id="leftSidebarAd" class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-center min-h-[400px] flex flex-col justify-center items-center text-slate-500 text-xs border-dashed">
+                <!-- Zona de anuncio Izquierda -->
+                <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
+                <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO CENTRAL -->
+        <main class="col-span-1 lg:col-span-8 w-full space-y-6">
+            
+            <!-- SECCIÓN DE CATEGORÍAS RÁPIDAS -->
+            <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl">
+                <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">Categorías Populares</h3>
+                <div id="categoriesContainer" class="flex flex-wrap gap-2">
+                    <?php foreach ($topCategories as $catName => $catCount): ?>
+                        <button onclick="filterByCategory('<?php echo htmlspecialchars($catName, ENT_QUOTES); ?>')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-300 text-xs px-3 py-1.5 rounded-full transition border border-slate-700 font-medium">
+                            <?php echo htmlspecialchars($catName); ?> (<?php echo $catCount; ?>)
+                        </button>
+                    <?php endforeach; ?>
+                </div>
             </div>
 
-            <h1>Transmisión en Vivo <span>VIP</span></h1>
-            
-            <p>Estás a un solo paso de ver contenido exclusivo sin censura. Catálogo actualizado, alta definición y chat privado disponible.</p>
+            <!-- SECCIÓN: GRID DE VIDEOS -->
+            <section>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base md:text-lg font-black text-white flex items-center gap-2">
+                        🔥 <span id="sectionTitle">Catálogo Completo</span>
+                    </h2>
+                    <div id="activeFilterBadge" class="hidden text-xs bg-rose-900/50 text-rose-300 px-3 py-1 rounded-full border border-rose-800 flex items-center gap-2">
+                        Filtrando por: <span id="filterName" class="font-bold"></span>
+                        <button onclick="clearFilter()" class="hover:text-white font-bold">&times;</button>
+                    </div>
+                </div>
 
-            <!-- Reemplaza el enlace de ejemplo "#" por tu link de promoción, Telegram o CPA -->
-            <a href="#" class="btn-cta" target="_blank">Entrar Ahora Gratis</a>
+                <!-- Grid renderizado desde PHP inicialmente para SEO, luego controlado por JS -->
+                <div id="videoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <?php 
+                    // Mostramos los primeros 48 videos directo desde PHP para renderizado ultrarrápido y SEO
+                    $initialBatch = array_slice($allVideos, 0, 48);
+                    foreach ($initialBatch as $video): 
+                        $primaryCat = isset($video['categories'][0]) ? $video['categories'][0] : 'JAV';
+                        $hasHd = '';
+                        if (isset($video['tags'])) {
+                            foreach ($video['tags'] as $tag) {
+                                if (stripos($tag, 'hd') !== false) { $hasHd = '• HD'; break; }
+                            }
+                        }
+                        $vSlug = slugify($video['title']);
+                    ?>
+                    <div class="video-card bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg transition duration-300 flex flex-col justify-between group hover:border-rose-500/50" data-title="<?php echo htmlspecialchars(strtolower($video['title'])); ?>" data-categories="<?php echo htmlspecialchars(strtolower(implode(',', $video['categories'] ?? []))); ?>">
+                        <div>
+                            <div class="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer" onclick="selectVideo('<?php echo $video['id']; ?>', '<?php echo $vSlug; ?>', '<?php echo htmlspecialchars(addslashes($video['title'])); ?>', '<?php echo htmlspecialchars($video['iframe']); ?>', '<?php echo htmlspecialchars($video['poster']); ?>', '<?php echo formatDuration($video['duration']); ?>')">
+                                <img src="<?php echo htmlspecialchars($video['poster']); ?>" alt="<?php echo htmlspecialchars($video['title']); ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                <span class="absolute bottom-2 right-2 bg-black/80 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"><?php echo formatDuration($video['duration']); ?></span>
+                                <div class="absolute inset-0 bg-rose-600/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                    <div class="bg-rose-600 text-white p-2.5 rounded-full shadow-lg">
+                                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-3">
+                                <h2 class="font-semibold text-xs text-slate-100 line-clamp-2 hover:text-rose-400 transition cursor-pointer mb-1" onclick="selectVideo('<?php echo $video['id']; ?>', '<?php echo $vSlug; ?>', '<?php echo htmlspecialchars(addslashes($video['title'])); ?>', '<?php echo htmlspecialchars($video['iframe']); ?>', '<?php echo htmlspecialchars($video['poster']); ?>', '<?php echo formatDuration($video['duration']); ?>')"><?php echo htmlspecialchars($video['title']); ?></h2>
+                                <p class="text-[10px] text-slate-400 font-medium"><?php echo htmlspecialchars($primaryCat); ?> <?php echo $hasHd; ?></p>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
 
-            <div class="footer-text">
-                🔒 Contenido exclusivo para mayores de edad. Acceso seguro y rápido.
+                <div id="statusMessage" class="text-center py-10 text-slate-500 text-sm hidden">
+                    No se encontraron resultados con ese criterio.
+                </div>
+
+                <!-- PAGINACIÓN / CARGAR MÁS -->
+                <div id="paginationContainer" class="flex justify-center items-center gap-2 mt-8">
+                    <button onclick="changePage(-1)" id="prevBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition disabled:opacity-30" disabled>Anterior</button>
+                    <span id="pageInfo" class="text-xs text-slate-400 font-mono px-3">Página 1</span>
+                    <button onclick="changePage(1)" id="nextBtn" class="bg-slate-900 border border-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold hover:border-rose-600 transition">Siguiente</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- SIDEBAR DERECHA -->
+        <aside class="hidden lg:block lg:col-span-2 space-y-4 sticky top-20">
+            <div id="rightSidebarAd" class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-center min-h-[400px] flex flex-col justify-center items-center text-slate-500 text-xs border-dashed">
+                <!-- Zona de anuncio Derecha -->
+                <span class="text-rose-500/60 font-bold mb-1">PUBLICIDAD</span>
+                <p>Pega aquí tu código HTML o script de AdMaven / Clickadilla</p>
             </div>
+        </aside>
+
+    </div>
+
+    <!-- MODAL REPRODUCTOR AMPLIADO CON VIDEOS SIMILARES -->
+    <div id="videoModal" class="fixed inset-0 bg-black/95 z-50 <?php echo $selectedVideo ? '' : 'hidden'; ?> flex items-center justify-center p-0 sm:p-6 backdrop-blur-md overflow-y-auto">
+        <div class="bg-slate-900 border-0 sm:border border-rose-600/50 w-full max-w-6xl sm:rounded-2xl overflow-hidden shadow-2xl relative flex flex-col hot-glow my-auto">
+            
+            <div class="flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 bg-slate-950 border-b border-rose-900/40">
+                <h3 id="modalTitle" class="font-bold text-xs sm:text-base text-white truncate pr-4">
+                    <?php echo $selectedVideo ? htmlspecialchars($selectedVideo['title']) : 'Reproduciendo'; ?>
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 text-3xl font-bold px-2 transition">&times;</button>
+            </div>
+
+            <!-- BANNER SUPERIOR DEL MODAL -->
+            <div class="bg-slate-950/80 px-4 py-1.5 border-b border-slate-800/60 flex justify-between items-center text-[11px] text-slate-400">
+                <span>⚡ Reproducción HD Prioritaria</span>
+                <span class="text-rose-500 font-semibold cursor-pointer hover:underline">Patrocinado ⭐</span>
+            </div>
+
+            <!-- Contenedor Principal del Reproductor + Similares a los Costados -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-black">
+                <!-- Video principal -->
+                <div class="lg:col-span-8 flex flex-col justify-center">
+                    <div class="relative w-full aspect-video bg-black flex items-center justify-center rounded-xl overflow-hidden shadow-lg">
+                        <iframe id="modalIframe" src="<?php echo $selectedVideo ? htmlspecialchars($selectedVideo['iframe']) : ''; ?>" class="w-full h-full border-0" allowfullscreen></iframe>
+                    </div>
+                </div>
+
+                <!-- Columna de Videos Similares (Llena el espacio vacío en PC) -->
+                <div class="lg:col-span-4 flex flex-col space-y-3 max-h-[450px] overflow-y-auto pr-1">
+                    <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider sticky top-0 bg-black py-1">🔥 Videos Similares / Recomendados</h4>
+                    <div id="similarVideosContainer" class="space-y-2.5">
+                        <?php if ($selectedVideo && isset($selectedVideo['categories'])): ?>
+                            <?php 
+                            $countSim = 0;
+                            foreach ($allVideos as $sim) {
+                                if ($sim['id'] === $selectedVideo['id']) continue;
+                                $hasCommonCat = !empty(array_intersect($sim['categories'] ?? [], $selectedVideo['categories']));
+                                if ($hasCommonCat && $countSim < 12):
+                                    $countSim++;
+                                    $simSlug = slugify($sim['title']);
+                            ?>
+                            <div onclick="selectVideo('<?php echo $sim['id']; ?>', '<?php echo $simSlug; ?>', '<?php echo htmlspecialchars(addslashes($sim['title'])); ?>', '<?php echo htmlspecialchars($sim['iframe']); ?>', '<?php echo htmlspecialchars($sim['poster']); ?>', '<?php echo formatDuration($sim['duration']); ?>')" class="flex gap-2 bg-slate-950/60 hover:bg-slate-800/80 p-1.5 rounded-xl cursor-pointer transition border border-slate-800/60">
+                                <div class="relative w-28 aspect-video bg-black rounded-lg overflow-hidden flex-shrink-0">
+                                    <img src="<?php echo htmlspecialchars($sim['poster']); ?>" alt="<?php echo htmlspecialchars($sim['title']); ?>" class="w-full h-full object-cover" loading="lazy">
+                                    <span class="absolute bottom-1 right-1 bg-black/80 text-rose-400 text-[9px] px-1 rounded font-mono"><?php echo formatDuration($sim['duration']); ?></span>
+                                </div>
+                                <div class="flex flex-col justify-center overflow-hidden pr-1">
+                                    <h5 class="text-[11px] font-semibold text-slate-200 line-clamp-2 leading-tight hover:text-rose-400"><?php echo htmlspecialchars($sim['title']); ?></h5>
+                                    <span class="text-[9px] text-slate-400 mt-1"><?php echo htmlspecialchars($sim['categories'][0] ?? 'JAV'); ?></span>
+                                </div>
+                            </div>
+                            <?php 
+                                endif;
+                            } 
+                            endif;
+                            ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BANNER INFERIOR DEL MODAL -->
+            <div class="bg-slate-950 p-3 sm:p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div class="w-full sm:w-auto text-center sm:text-left text-[11px] text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-lg">
+                    🔥 ¿Quieres ver más contenido exclusivo sin anuncios molestos? <span class="text-rose-400 font-bold underline cursor-pointer">Clic aquí</span>
+                </div>
+                <button onclick="shareVideo()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition whitespace-nowrap">Copiar Enlace</button>
+            </div>
+
         </div>
     </div>
 
+    <!-- FOOTER -->
+    <footer class="bg-slate-950 border-t border-slate-900 text-center py-5 text-slate-500 text-xs">
+        JavHub Mobile &bull; Contenido exclusivo para mayores de edad (+18)
+    </footer>
+
+    <!-- SCRIPT CLIENTE PARA BÚSQUEDA Y FILTRADO EN TIEMPO REAL -->
+    <script>
+        // Catálogo completo incrustado en JSON para búsqueda instantánea en cliente sin recargar la página
+        const allVideosData = <?php echo json_encode($allVideos); ?>;
+        
+        let currentPage = 1;
+        const itemsPerPage = 48;
+        let currentFilteredVideos = allVideosData;
+
+        const searchInput = document.getElementById('searchInput');
+        const videoGrid = document.getElementById('videoGrid');
+        const statusMessage = document.getElementById('statusMessage');
+        const paginationContainer = document.getElementById('paginationContainer');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const activeFilterBadge = document.getElementById('activeFilterBadge');
+        const filterName = document.getElementById('filterName');
+        const videoModal = document.getElementById('videoModal');
+        const modalIframe = document.getElementById('modalIframe');
+        const modalTitle = document.getElementById('modalTitle');
+        const similarVideosContainer = document.getElementById('similarVideosContainer');
+
+        function formatDurationJS(seconds) {
+            const sec = parseInt(seconds, 10);
+            if (isNaN(sec)) return "00:00";
+            const mins = Math.floor(sec / 60);
+            const remainingSecs = sec % 60;
+            return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
+        }
+
+        function slugifyJS(text) {
+            return text.toString().toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w\-]+/g, '')
+                .replace(/\-\-+/g, '-')
+                .trim();
+        }
+
+        function renderGridPage() {
+            videoGrid.innerHTML = '';
+
+            if (currentFilteredVideos.length === 0) {
+                statusMessage.style.display = 'block';
+                paginationContainer.classList.add('hidden');
+                return;
+            } else {
+                statusMessage.style.display = 'none';
+                paginationContainer.classList.remove('hidden');
+            }
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageItems = currentFilteredVideos.slice(startIndex, endIndex);
+
+            pageItems.forEach(video => {
+                const primaryCat = video.categories && video.categories.length > 0 ? video.categories[0] : 'JAV';
+                const hasHd = video.tags && video.tags.some(t => t.toLowerCase().includes('hd')) ? '• HD' : '';
+                const vSlug = slugifyJS(video.title);
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg transition duration-300 flex flex-col justify-between group hover:border-rose-500/50';
+                card.innerHTML = `
+                    <div>
+                        <div class="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer" onclick="selectVideo('${video.id}', '${vSlug}', '${escapeHtml(video.title)}', '${video.iframe}', '${video.poster}', '${formatDurationJS(video.duration)}')">
+                            <img src="${video.poster}" alt="${escapeHtml(video.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                            <span class="absolute bottom-2 right-2 bg-black/80 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">${formatDurationJS(video.duration)}</span>
+                            <div class="absolute inset-0 bg-rose-600/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <div class="bg-rose-600 text-white p-2.5 rounded-full shadow-lg">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <h2 class="font-semibold text-xs text-slate-100 line-clamp-2 hover:text-rose-400 transition cursor-pointer mb-1" onclick="selectVideo('${video.id}', '${vSlug}', '${escapeHtml(video.title)}', '${video.iframe}', '${video.poster}', '${formatDurationJS(video.duration)}')">${escapeHtml(video.title)}</h2>
+                            <p class="text-[10px] text-slate-400 font-medium">${primaryCat} ${hasHd}</p>
+                        </div>
+                    </div>
+                `;
+                videoGrid.appendChild(card);
+            });
+
+            const totalPages = Math.ceil(currentFilteredVideos.length / itemsPerPage);
+            pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage >= totalPages;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderGridPage();
+        }
+
+        function filterByCategory(cat) {
+            currentPage = 1;
+            currentFilteredVideos = allVideosData.filter(v => v.categories && v.categories.includes(cat));
+            filterName.textContent = cat;
+            activeFilterBadge.classList.remove('hidden');
+            renderGridPage();
+        }
+
+        function clearFilter() {
+            currentPage = 1;
+            currentFilteredVideos = allVideosData;
+            activeFilterBadge.classList.add('hidden');
+            searchInput.value = '';
+            renderGridPage();
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            currentPage = 1;
+            currentFilteredVideos = allVideosData.filter(video => {
+                const titleMatch = video.title.toLowerCase().includes(term);
+                const catMatch = video.categories && video.categories.some(c => c.toLowerCase().includes(term));
+                const tagMatch = video.tags && video.tags.some(t => t.toLowerCase().includes(term));
+                return titleMatch || catMatch || tagMatch;
+            });
+            renderGridPage();
+        });
+
+        function selectVideo(id, slug, title, iframe, poster, duration) {
+            modalTitle.textContent = title;
+            modalIframe.src = iframe;
+            videoModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?v=${slug}-${id}`;
+            window.history.pushState({path: newurl}, '', newurl);
+
+            // Cargar videos similares en la barra lateral del modal dinámicamente
+            renderSimilarVideosInModal(id);
+        }
+
+        function renderSimilarVideosInModal(currentId) {
+            const currentVideo = allVideosData.find(v => v.id === currentId);
+            if (!currentVideo) return;
+
+            similarVideosContainer.innerHTML = '';
+            let similars = allVideosData.filter(v => v.id !== currentId && v.categories && currentVideo.categories && v.categories.some(c => currentVideo.categories.includes(c)));
+            
+            if (similars.length < 8) {
+                const others = allVideosData.filter(v => v.id !== currentId && !similars.includes(v));
+                similars = similars.concat(others);
+            }
+
+            similars.slice(0, 12).forEach(sim => {
+                const simSlug = slugifyJS(sim.title);
+                const simCard = document.createElement('div');
+                simCard.className = 'flex gap-2 bg-slate-950/60 hover:bg-slate-800/80 p-1.5 rounded-xl cursor-pointer transition border border-slate-800/60';
+                simCard.onclick = () => selectVideo(sim.id, simSlug, escapeHtml(sim.title), sim.iframe, sim.poster, formatDurationJS(sim.duration));
+
+                simCard.innerHTML = `
+                    <div class="relative w-28 aspect-video bg-black rounded-lg overflow-hidden flex-shrink-0">
+                        <img src="${sim.poster}" alt="${escapeHtml(sim.title)}" class="w-full h-full object-cover" loading="lazy">
+                        <span class="absolute bottom-1 right-1 bg-black/80 text-rose-400 text-[9px] px-1 rounded font-mono">${formatDurationJS(sim.duration)}</span>
+                    </div>
+                    <div class="flex flex-col justify-center overflow-hidden pr-1">
+                        <h5 class="text-[11px] font-semibold text-slate-200 line-clamp-2 leading-tight hover:text-rose-400">${escapeHtml(sim.title)}</h5>
+                        <span class="text-[9px] text-slate-400 mt-1">${sim.categories ? sim.categories[0] : 'JAV'}</span>
+                    </div>
+                `;
+                similarVideosContainer.appendChild(simCard);
+            });
+        }
+
+        function closeModal() {
+            modalIframe.src = '';
+            videoModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.pushState({path: cleanUrl}, '', cleanUrl);
+        }
+
+        function shareVideo() {
+            navigator.clipboard.writeText(window.location.href);
+            alert('¡Enlace directo copiado al portapapeles!');
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        window.addEventListener('popstate', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('v')) {
+                closeModal();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
 </body>
-                                        
-                                  
-                                        
-                                        
 </html>
